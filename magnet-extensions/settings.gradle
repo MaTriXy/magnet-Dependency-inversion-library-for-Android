@@ -1,0 +1,12 @@
+include ':magnetx-app',
+        ':magnetx-app-leakcanary',
+	':magnetx-app-rxandroid',
+        ':magnetx-selector-android',
+        ':magnetx-selector-features',
+        ':magnet',
+        ':magnet-processor'
+
+rootProject.name = 'magnet-extensions'
+
+project(":magnet").projectDir = new File(rootDir, "../magnet-library/magnet")
+project(":magnet-processor").projectDir = new File(rootDir, "../magnet-library/magnet-processor")

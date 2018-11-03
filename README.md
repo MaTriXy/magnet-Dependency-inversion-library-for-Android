@@ -1,51 +1,101 @@
 [![Build Status](https://travis-ci.org/beworker/magnet.svg?branch=master)](https://travis-ci.org/beworker/magnet)
+[![Kotlin version badge](https://img.shields.io/badge/kotlin-1.3.0-blue.svg)](http://kotlinlang.org/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 
-# Magnet
-Dependency inversion library for Android.
+<img src="documentation/images/magnet.png" width="100" />
+<hr1> 
 
-[Dependency inversion principle][3] helps to decouple high-level modules from the low-level module implementation details and completes [SOLID object-oriented desing][4]. If you are about to modularize your Android application and apply dependency inversion prinsible, then Magnet library would be a good fit for your project as it makes dependency inversion a fun task.
+Magnet is a concise dependency injection and [dependency inversion][1] library for Android, designed for highly modular applications. Magnet operates on hierarchical dependency scopes where a child scope extends its parent scope by keeping a reference to it.
 
-# Why?
-Let's compare traditional layered design to the desing based on dependency inversion principle. As an example we take an application consisting of a navigation bar with three tabbed pages.
-![Why diagram][1]
+<img src="documentation/images/scopes.png" width="680" />
 
-Dependency inversion principle requires us to desing our application for extension right away instead of adding feature-specific code here and there uncontrolled, by spreading it all over the application as the application grows. Needless to say how more extensible, testable and maintainable our application becomes when it is desined for extension.
+An instance is typically injected within a scope. Instance can depend on other instances whithin the same or a parent scope. Magnet will take care for injecting and keeping the instance in the right scope, where all required instance dependencies can be satisfied. Thus you don't have to declare any modules and componets, and then bind them together. You just define dependencies in your class constructor, optionally declare how to scope the instance and Magnet will do the rest. 
 
-Another advantage of structuring the application in such a modular way is the ability to repackage the app according to new requirements. For instance we want to create a new companion app which uses some of the already existing modules or we want to create an Android Instant app. If we did everything right, we will be able to repackage some of existing modules into the new app and write missing ones.
+Here is a slightly simplified example of how Magnet would build Dagger's coffe maker.
 
-# How?
-As the name of the principle says we need to invert dependencies. If we simply invert dependencies then our library modules will depend on the application module. At the same time application module has to dependend on the library modules because it has to include them into the apk. We run into a circular dependencies situation which is not allowed in gradle builds. To resolve this circular dependency we have to avoid any dependency onto the application module. It means none of the library modules may depend on the application module. This would be only possible if our application module would have no code or resources the other modules need. This brings us to the design depicted below.
+```kotlin
+interface Pump
+interface Heater
 
-![How diagram][2]
+@Instance(type = Pump::class)
+internal class Thermosiphon(private val heater: Heater) : Pump
 
-Application module becomes nearly empty and has the single role - it assembles all modules together into a single apk. Any features our application has, have to be moved to the library modules. 
+@Instance(type = Heater::class)
+internal class ElectricHeater(): Heater
 
-Our sample application defines `app-main` library module which can host tabbed pages. We make it extensible by exposing `Page` interface to its extension. Then we create thee more library modules which extend `app-main` module by providing `HomePage`, `DashboardPage` and `NotificationsPage` implementations of `Page` interface. 
+@Instance(type = CoffeeMaker::class)
+class CoffeeMaker(
+   private val heater: Heater,
+   private val pump: Pump
+)
 
-Now we can ask Magnet to put all these pieces together.
-1. We add `@Implementation` annotation to the implementations of `Page` interface. This will allow Magnet to find those implementations at build-time.
-2. In `MainActivity.onCreate()` method in `app-main` module we ask Magnet to instantiate all available implementations of the `Page` interface at runtime.
-3. Last but not least, we create an empty marker interface inside the `app` module and annotate it with `@MagnetizeImplementations`. This will force Magnet to collect and index all implementations registred in the app.
+val scope = Magnet.createScope()
+val coffeeMaker: CoffeeMaker = scope.getSingle()
+```
 
-Sample application located in this repo implements exactly the logic described above. You can build, run and debug it. The fun part is, that now you can remove any of the implementation modules from the build by simply commenting out respective `implementation` dependency inside the `build.gradle` file of the `sample-app` module. Just rerun the app and commented out page will disappear. Have fun and happy coding!
+This desing makes dependency injection so easy that it becomes hard not to use it.
 
-# Gradle build
+# Unique features
 
-Kotlin:
+1. Magnet does not force you to use any generated classes in your code. This dramatically improves user experience when code does not compile due to an error. Delevoper will see a single error at a single location and not hundreds of errors at all places, where generated code is referenced. If you used dagger, you know what I mean. 
+
+2. Magnet is capable of injecting annotated classes from **compiled** libraries. This means you can extend funtionality of your application by just adding libraries as a dependency to the compilation. No source modification is necessary. See how [magnetx-app-leakcanary](magnet-extensions/magnetx-app-leakcanary) and [magnetx-app-rxandroid](magnet-extensions/magnetx-app-rxandroid) leverage this feature.
+
+3. Magnet has a concept of extensible declarative selectors, which gives you additional control over when instances should be injected and when not. The example down below injects `AudioFocusImplLegacy` implementation of `AudioFocus` interface, if current Android API level is less than 26 and `AudioFocusImpl26` one otherwise.
+
+```kotlin
+interface AudioFocus
+
+@Instance(
+    type = AudioFocus::class,
+    selector = "android.api < 26"
+)
+internal class AudioFocusLegacy : AudioFocus
+
+@Instance(
+    type = AudioFocus::class,
+    selector = "android.api >= 26"
+)
+internal class AudioFocusV26: AudioFocus
+
+val scope = Magnet.createScope()
+val audioFocus: AudioFocus = scope.getSingle()
+```
+
+Custom selectors are easy to write. For more details checkout [magnetx-selector-android](magnet-extensions/magnetx-selector-android) or [magnetx-selector-features](magnet-extensions/magnetx-selector-features) modules.
+
+# Documentation
+
+1. [Developer Guide](https://www.halfbit.de/magnet/developer-guide/)
+2. [Dependency Inversion][1]
+3. [Hierarchical Scopes][2]
+
+# Gradle
+
+Kotlin
 ```gradle
 dependencies {
-    api "de.halfbit:magnet:0.0.1"
-    kapt "de.halfbit:magnet-processor:0.0.1"
+    api 'de.halfbit:magnet-kotlin:2.5'
+    kapt 'de.halfbit:magnet-processor:2.5'
 }
 ```
 
-Java:
+Java
 ```gradle
 dependencies {
-    api 'de.halfbit:magnet:0.0.1'
-    annotationProcessor 'de.halfbit:magnet-processor:0.0.1'
+    api 'de.halfbit:magnet:2.5'
+    annotationProcessor 'de.halfbit:magnet-processor:2.5'
 }
 ```
+
+# Proguard & R8
+```proguard 
+-keep class magnet.internal.MagnetIndexer { *; }
+```
+
+# Support
+
+Magnet is provided for free, without any support. If you consider using Magnet in your commercial product and you need support or training, feel free to <a href="mailto:info@halfbit.de?subject=Magnet,%20Technical%20support">contact me</a>.
 
 # License
 ```
@@ -64,7 +114,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-[1]: docs/images/why-diagram.png
-[2]: docs/images/how-diagram.png
-[3]: https://en.wikipedia.org/wiki/Dependency_inversion_principle
-[4]: https://en.wikipedia.org/wiki/SOLID_(object-oriented_design)
+[1]: https://github.com/beworker/magnet/wiki/Dependency-inversion
+[2]: https://github.com/beworker/magnet/wiki/Dependency-auto-scoping
