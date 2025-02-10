@@ -1,0 +1,16 @@
+plugins {
+    id 'java-library'
+    id 'com.vanniktech.maven.publish'
+}
+
+sourceCompatibility = javaVersion
+targetCompatibility = javaVersion
+
+dependencies {
+    compileOnly deps.annotations
+
+    testImplementation deps.junit
+    testImplementation deps.mockito
+    testImplementation deps.truth
+    testCompileOnly deps.annotations
+}

@@ -1,0 +1,10 @@
+include ':magnet',
+        ':magnet-kotlin',
+        ':magnet-processor',
+        ':magnetx-app',
+        ':magnetx-app-stetho',
+        ':magnetx-app-stetho-scope',
+        ':magnetx-app-rxandroid',
+        ':magnetx-app-rx3android',
+        ':magnetx-selector-android',
+        ':magnetx-selector-features'

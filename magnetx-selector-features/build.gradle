@@ -1,0 +1,28 @@
+plugins {
+    id 'kotlin'
+    id 'kotlin-kapt'
+    id 'com.vanniktech.maven.publish'
+}
+
+repositories {
+    maven { url 'https://maven.google.com' }
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = javaVersion
+    }
+}
+
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = javaVersion
+    }
+}
+
+dependencies {
+    compileOnly deps.android
+    implementation deps.kotlinjdk
+    implementation project(':magnet')
+    kapt project(':magnet-processor')
+}
